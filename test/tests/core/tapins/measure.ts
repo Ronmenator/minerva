@@ -31,7 +31,7 @@ module minerva.core.measure.tapins.tests {
             };
         },
         output: function (): measure.IOutput {
-            return {
+            return <measure.IOutput>{
                 error: null,
                 previousConstraint: new Size(),
                 desiredSize: new Size(),
@@ -60,7 +60,8 @@ module minerva.core.measure.tapins.tests {
         assert.strictEqual(minerva.errors.length, 0);
 
         assert.ok(!tapins.validate(input, state, output, tree, new Size(NaN, NaN)));
-        assert.strictEqual(minerva.errors.length, 1);
+        assert.equal(minerva.errors.length, 1);
+        minerva.clearErrors();
     });
 
     QUnit.test("validateVisibility", (assert) => {

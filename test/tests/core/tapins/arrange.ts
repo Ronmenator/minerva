@@ -17,7 +17,7 @@ module minerva.core.arrange.tapins.tests {
 
     var mock = {
         input: function (): arrange.IInput {
-            return {
+            return <arrange.IInput>{
                 width: NaN,
                 height: NaN,
                 minWidth: 0,
@@ -42,7 +42,7 @@ module minerva.core.arrange.tapins.tests {
             };
         },
         state: function (): arrange.IState {
-            return {
+            return <arrange.IState>{
                 arrangedSize: new Size(),
                 finalRect: new Rect(),
                 finalSize: new Size(),
@@ -55,7 +55,7 @@ module minerva.core.arrange.tapins.tests {
             };
         },
         output: function (): arrange.IOutput {
-            return {
+            return <arrange.IOutput>{
                 error: null,
                 layoutSlot: new Rect(),
                 layoutXform: mat3.identity(),
@@ -77,6 +77,69 @@ module minerva.core.arrange.tapins.tests {
         }
     };
 
+    QUnit.test("validateFinalRect", (assert) => {
+        var input = mock.input();
+        var state = mock.state();
+        var output = mock.output();
+        var tree = mock.tree();
+
+        var fr = new Rect(0, 0, 50, 50);
+        assert.ok(tapins.validateFinalRect(input, state, output, tree, fr));
+
+        fr.x = NaN;
+        assert.ok(!tapins.validateFinalRect(input, state, output, tree, fr));
+        assert.equal(minerva.errors.length, 1);
+        minerva.clearErrors();
+        fr.x = 0;
+
+        fr.y = NaN;
+        assert.ok(!tapins.validateFinalRect(input, state, output, tree, fr));
+        assert.equal(minerva.errors.length, 1);
+        minerva.clearErrors();
+        fr.y = 0;
+
+        fr.width = -1;
+        assert.ok(!tapins.validateFinalRect(input, state, output, tree, fr));
+        assert.equal(minerva.errors.length, 1);
+        minerva.clearErrors();
+
+        fr.width = NaN;
+        assert.ok(!tapins.validateFinalRect(input, state, output, tree, fr));
+        assert.equal(minerva.errors.length, 1);
+        minerva.clearErrors();
+
+        fr.width = Number.POSITIVE_INFINITY;
+        assert.ok(!tapins.validateFinalRect(input, state, output, tree, fr));
+        assert.equal(minerva.errors.length, 1);
+        minerva.clearErrors();
+
+        fr.width = Number.NEGATIVE_INFINITY;
+        assert.ok(!tapins.validateFinalRect(input, state, output, tree, fr));
+        assert.equal(minerva.errors.length, 1);
+        minerva.clearErrors();
+        fr.width = 50;
+
+        fr.height = -1;
+        assert.ok(!tapins.validateFinalRect(input, state, output, tree, fr));
+        assert.equal(minerva.errors.length, 1);
+        minerva.clearErrors();
+
+        fr.height = NaN;
+        assert.ok(!tapins.validateFinalRect(input, state, output, tree, fr));
+        assert.equal(minerva.errors.length, 1);
+        minerva.clearErrors();
+
+        fr.height = Number.POSITIVE_INFINITY;
+        assert.ok(!tapins.validateFinalRect(input, state, output, tree, fr));
+        assert.equal(minerva.errors.length, 1);
+        minerva.clearErrors();
+
+        fr.height = Number.NEGATIVE_INFINITY;
+        assert.ok(!tapins.validateFinalRect(input, state, output, tree, fr));
+        assert.equal(minerva.errors.length, 1);
+        minerva.clearErrors();
+    });
+
     QUnit.test("applyRounding", (assert) => {
         var input = mock.input();
         var state = mock.state();
@@ -92,42 +155,6 @@ module minerva.core.arrange.tapins.tests {
         assert.ok(tapins.applyRounding(input, state, output, tree, fr));
         assert.notStrictEqual(state.finalRect, fr);
         assert.deepEqual(state.finalRect, new Rect(0.25, 0.75, 50.25, 50.50));
-    });
-
-    QUnit.test("validateFinalRect", (assert) => {
-        var input = mock.input();
-        var state = mock.state();
-        var output = mock.output();
-        var tree = mock.tree();
-
-        var fr = new Rect(0, 0, 50, 50);
-        Rect.copyTo(fr, state.finalRect);
-        assert.ok(tapins.validateFinalRect(input, state, output, tree, fr));
-
-        state.finalRect.width = -1;
-        assert.ok(!tapins.validateFinalRect(input, state, output, tree, fr));
-
-        state.finalRect.width = NaN;
-        assert.ok(!tapins.validateFinalRect(input, state, output, tree, fr));
-
-        state.finalRect.width = Number.POSITIVE_INFINITY;
-        assert.ok(!tapins.validateFinalRect(input, state, output, tree, fr));
-
-        state.finalRect.width = Number.NEGATIVE_INFINITY;
-        assert.ok(!tapins.validateFinalRect(input, state, output, tree, fr));
-        state.finalRect.width = 50;
-
-        state.finalRect.height = -1;
-        assert.ok(!tapins.validateFinalRect(input, state, output, tree, fr));
-
-        state.finalRect.height = NaN;
-        assert.ok(!tapins.validateFinalRect(input, state, output, tree, fr));
-
-        state.finalRect.height = Number.POSITIVE_INFINITY;
-        assert.ok(!tapins.validateFinalRect(input, state, output, tree, fr));
-
-        state.finalRect.height = Number.NEGATIVE_INFINITY;
-        assert.ok(!tapins.validateFinalRect(input, state, output, tree, fr));
     });
 
     QUnit.test("validateVisibility", (assert) => {

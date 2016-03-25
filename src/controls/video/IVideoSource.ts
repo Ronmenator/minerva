@@ -1,10 +1,5 @@
 module minerva.controls.video {
-    export interface IVideoSource {
-        video: HTMLVideoElement;
-        pixelWidth: number;
-        pixelHeight: number;
+    export interface IVideoSource extends image.IImageSource {
         getIsPlaying(): boolean;
-        lock();
-        unlock();
     }
 }

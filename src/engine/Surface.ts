@@ -21,25 +21,21 @@ module minerva.engine {
 
         private $$width: number = 0;
         private $$height: number = 0;
-        //NOTE: If we resize the HTML5 canvas during resize, the canvas will go blank until render happens
-        private $$sizechanged: boolean = false;
 
-        get width (): number {
+        get width(): number {
             return this.$$width;
         }
 
-        get height (): number {
+        get height(): number {
             return this.$$height;
         }
 
-        init (canvas: HTMLCanvasElement) {
+        init(canvas: HTMLCanvasElement) {
             this.$$canvas = canvas;
             this.$$ctx = new core.render.RenderContext(<CanvasRenderingContext2D>canvas.getContext('2d', {alpha: false}));
-            this.$$width = canvas.offsetWidth;
-            this.$$height = canvas.offsetHeight;
         }
 
-        attachLayer (layer: core.Updater, root?: boolean) {
+        attachLayer(layer: core.Updater, root?: boolean) {
             if (root === true)
                 this.$$layers.unshift(layer);
             else
@@ -50,7 +46,7 @@ module minerva.engine {
             layer.setSurface(this);
         }
 
-        detachLayer (layer: core.Updater) {
+        detachLayer(layer: core.Updater) {
             layer.tree.isTop = false;
             layer.setSurface(null);
             var index = this.$$layers.indexOf(layer);
@@ -59,7 +55,7 @@ module minerva.engine {
             this.invalidate(layer.assets.surfaceBoundsWithChildren);
         }
 
-        walkLayers (reverse?: boolean): IWalker<core.Updater> {
+        walkLayers(reverse?: boolean): IWalker<core.Updater> {
             var layers = this.$$layers;
             var i = -1;
             if (reverse === true) {
@@ -84,19 +80,19 @@ module minerva.engine {
             }
         }
 
-        updateBounds () {
+        updateBounds() {
 
         }
 
-        invalidate (region?: Rect) {
-            region = region || new Rect(0, 0, this.$$canvas.offsetWidth, this.$$canvas.offsetHeight);
+        invalidate(region?: Rect) {
+            region = region || new Rect(0, 0, this.width, this.height);
             if (!this.$$dirtyRegion)
                 this.$$dirtyRegion = new Rect(region.x, region.y, region.width, region.height);
             else
                 Rect.union(this.$$dirtyRegion, region);
         }
 
-        render () {
+        render() {
             for (var i = 0, hooks = this.$$prerenderhooks; i < hooks.length; i++) {
                 hooks[i].preRender();
             }
@@ -108,15 +104,12 @@ module minerva.engine {
             Rect.roundOut(region);
 
             var ctx = this.$$ctx;
-            if (this.$$sizechanged) {
-                this.$$sizechanged = false;
-                ctx.resize(this.$$width, this.$$height);
-            } else {
-            }
-            ctx.raw.fillStyle = "#ffffff";
-            ctx.raw.fillRect(region.x, region.y, region.width, region.height);
+            ctx.size.commitResize();
 
             ctx.save();
+            ctx.applyDpiRatio();
+            ctx.raw.fillStyle = "#ffffff";
+            ctx.raw.fillRect(region.x, region.y, region.width, region.height);
             ctx.clipRect(region);
             for (var layers = this.$$layers, i = 0, len = layers.length; i < len; i++) {
                 layers[i].render(ctx, region);
@@ -124,26 +117,26 @@ module minerva.engine {
             ctx.restore();
         }
 
-        hookPrerender (updater: core.Updater) {
+        hookPrerender(updater: core.Updater) {
             this.$$prerenderhooks.push(updater);
         }
 
-        unhookPrerender (updater: core.Updater) {
+        unhookPrerender(updater: core.Updater) {
             var index = this.$$prerenderhooks.indexOf(updater);
             if (index > -1) {
                 this.$$prerenderhooks.splice(index, 1);
             }
         }
 
-        addUpDirty (updater: core.Updater) {
+        addUpDirty(updater: core.Updater) {
             this.$$upDirty.push(updater);
         }
 
-        addDownDirty (updater: core.Updater) {
+        addDownDirty(updater: core.Updater) {
             this.$$downDirty.push(updater);
         }
 
-        updateLayout (): boolean {
+        updateLayout(): boolean {
             var pass: IPass = {
                 count: 0,
                 maxCount: 250,
@@ -154,7 +147,7 @@ module minerva.engine {
                 measureList: [],
                 arrangeList: [],
                 sizingList: [],
-                surfaceSize: new Size(this.$$width, this.$$height),
+                surfaceSize: new Size(this.width, this.height),
                 sizingUpdates: []
             };
             var updated = false;
@@ -171,21 +164,28 @@ module minerva.engine {
             return updated;
         }
 
-        resize (width: number, height: number) {
+        resize(width: number, height: number) {
+            if (this.$$width === width && this.$$height === height)
+                return;
+            var region = new Rect(0, 0, this.$$width, this.$$height);
+            Rect.union(region, new Rect(0, 0, width, height));
+            Rect.roundOut(region);
             this.$$width = width;
             this.$$height = height;
-            this.$$sizechanged = true;
-            this.invalidate(new Rect(0, 0, width, height));
+            this.$$ctx.size.queueResize(width, height);
+            this.invalidate(region);
             for (var layers = this.$$layers, i = 0; i < layers.length; i++) {
                 layers[i].invalidateMeasure();
             }
         }
 
-        hitTest (pos: Point): core.Updater[] {
+        hitTest(pos: Point): core.Updater[] {
             if (this.$$layers.length < 1)
                 return null;
             hitTestCtx = hitTestCtx || new core.render.RenderContext(<CanvasRenderingContext2D>document.createElement('canvas').getContext('2d'));
-            hitTestCtx.resize(this.$$canvas.width, this.$$canvas.height);
+            hitTestCtx.size
+                .queueResize(this.width, this.height)
+                .commitResize();
 
             var list: core.Updater[] = [];
             for (var layers = this.$$layers, i = layers.length - 1; i >= 0 && list.length === 0; i--) {
@@ -194,7 +194,12 @@ module minerva.engine {
             return list;
         }
 
-        static measureWidth (text: string, font: Font): number {
+        updateDpiRatio() {
+            if (this.$$ctx.size.updateDpiRatio())
+                this.invalidate();
+        }
+
+        static measureWidth(text: string, font: Font): number {
             fontCtx = fontCtx || <CanvasRenderingContext2D>document.createElement('canvas').getContext('2d');
             fontCtx.font = font.toHtml5Object();
             return fontCtx.measureText(text).width;
